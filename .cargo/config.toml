@@ -1,0 +1,17 @@
+[target.'cfg(all(target_arch = "arm", target_os = "none"))']
+# replace your chip as listed in `probe-run --list-chips`
+runner = "probe-run --chip STM32L432KCUx"
+
+rustflags = [
+    # Code-size optimizations.
+    "-Z", "trap-unreachable=no",
+    "-C", "inline-threshold=5",
+    "-C", "no-vectorize-loops",
+    "-Z", "emit-stack-sizes",
+]
+
+[build]
+target = "thumbv7em-none-eabi"
+
+[env]
+DEFMT_LOG = "trace"
