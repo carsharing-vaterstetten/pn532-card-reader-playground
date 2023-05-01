@@ -40,3 +40,36 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```shell
 cargo run --release
 ```
+
+### Result
+
+If all goes well, putting an NFC tag on the card reader should show something like this:
+
+
+```
+    Finished release [optimized + debuginfo] target(s) in 0.88s
+     Running `probe-run --chip STM32L432KCUx target/thumbv7em-none-eabi/release/vat-card-reader`
+(HOST) INFO  flashing program (19 pages / 19.00 KiB)
+(HOST) INFO  success!
+────────────────────────────────────────────────────────────────────────────────
+0.000152 INFO  Performing reset ...
+└─ vat_card_reader::____embassy_main_task::{async_fn#0} @ src/main.rs:80
+0.700744 INFO  Performing reset ... done!
+└─ vat_card_reader::____embassy_main_task::{async_fn#0} @ src/main.rs:87
+0.701110 INFO  Sending wakup
+└─ vat_card_reader::____embassy_main_task::{async_fn#0} @ src/main.rs:91
+1.701721 INFO  Run
+└─ vat_card_reader::____embassy_main_task::{async_fn#0} @ src/main.rs:97
+1.809204 INFO  Firmware: FirmwareVersion { ic: 50, version: 1, revision: 6, supports_iso18092: true, supports_iso14443_a: true, supports_iso14443_b: true }
+└─ vat_card_reader::____embassy_main_task::{async_fn#0} @ src/main.rs:108
+4.034881 INFO  Card: CardUid([1, 35, 69, 103, 0, 0, 0])
+└─ vat_card_reader::____embassy_main_task::{async_fn#0} @ src/main.rs:115
+4.064697 INFO  Card: CardUid([1, 35, 69, 103, 0, 0, 0])
+└─ vat_card_reader::____embassy_main_task::{async_fn#0} @ src/main.rs:115
+4.094512 INFO  Card: CardUid([1, 35, 69, 103, 0, 0, 0])
+└─ vat_card_reader::____embassy_main_task::{async_fn#0} @ src/main.rs:115
+4.124328 INFO  Card: CardUid([1, 35, 69, 103, 0, 0, 0])
+└─ vat_card_reader::____embassy_main_task::{async_fn#0} @ src/main.rs:115
+4.154113 INFO  Card: CardUid([1, 35, 69, 103, 0, 0, 0])
+└─ vat_card_reader::____embassy_main_task::{async_fn#0} @ src/main.rs:115
+```
