@@ -1,4 +1,4 @@
-use defmt::{debug, write, Format, Formatter};
+use defmt::{debug, trace, write, Format, Formatter};
 
 // some code from: https://github.com/WMT-GmbH/pn532/blob/master/src/protocol.rs
 
@@ -68,15 +68,15 @@ impl<I: Interface, const B: usize> Protocol<I, B> {
         data: &[u8],
         response_len: u8,
     ) -> Result<(u8, &[u8]), Error<I::Error>> {
-        debug!("Sending request");
+        trace!("Sending request");
         self.send_request(cmd, data).await?;
-        debug!("Waiting for ack");
+        trace!("Waiting for ack");
         self.wait_for_ready().await?;
-        debug!("Reading ack");
+        trace!("Reading ack");
         self.read_ack().await?;
-        debug!("Waiting for response");
+        trace!("Waiting for response");
         self.wait_for_ready().await?;
-        debug!("Read response");
+        trace!("Read response");
         self.read_response(response_len).await
     }
 
@@ -155,11 +155,14 @@ impl<I: Interface, const B: usize> Protocol<I, B> {
     }
 
     fn process_response(buf: &[u8]) -> Result<(u8, &[u8]), Error<I::Error>> {
+        trace!("Process response: {:#X}", buf);
+
         if buf[0..3] != [0x00, 0x00, 0xFF] {
             return Err(Error::BadResponse);
         }
         // Check length & length checksum
         let frame_len = buf[3];
+        trace!("Frame length: {}", frame_len);
         if (frame_len.wrapping_add(buf[4])) != 0 {
             return Err(Error::BadChecksum);
         }

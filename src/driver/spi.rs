@@ -1,5 +1,5 @@
 use crate::driver::{protocol::Error, Interface};
-use defmt::debug;
+use defmt::trace;
 use embedded_hal_async::spi::Operation;
 
 // some code from: https://github.com/WMT-GmbH/pn532/blob/master/src/spi.rs
@@ -30,7 +30,7 @@ where
         buf[0] = PN532_SPI_DATAWRITE;
         buf[1..len + 1].copy_from_slice(request);
 
-        debug!("Request: {}", &buf[0..len + 1]);
+        trace!("Request: {}", &buf[0..len + 1]);
 
         self.0
             //    .write_transaction(&[&[PN532_SPI_DATAWRITE], request])
@@ -42,16 +42,6 @@ where
     }
 
     async fn receive(&mut self, buf: &mut [u8]) -> Result<(), Error<Self::Error>> {
-        // workaround due to https://github.com/embassy-rs/embassy/issues/1411
-        /*
-                buf[0] = PN532_SPI_DATAREAD;
-                self.0
-                    .transfer_in_place(buf)
-                    // .transfer(..)
-                    .await
-                    .map_err(Error::Transport)?;
-        */
-
         self.0
             .transaction(&mut [
                 Operation::Write(&[PN532_SPI_DATAREAD]),
@@ -64,6 +54,8 @@ where
     }
 
     async fn wait_for_ready(&mut self) -> Result<(), Error<Self::Error>> {
+        // FIXME: implement external interrupt
+
         let mut buf = [0u8; 1];
 
         let mut cnt = 0usize;
@@ -95,7 +87,7 @@ where
             // Timer::after(Duration::from_millis(100)).await;
         }
 
-        debug!("Ready after {0} checks", cnt);
+        trace!("Ready after {0} checks", cnt);
 
         Ok(())
     }

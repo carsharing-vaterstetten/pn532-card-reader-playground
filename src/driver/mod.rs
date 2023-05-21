@@ -1,5 +1,4 @@
-use core::marker::PhantomData;
-use defmt::{debug, write, Format, Formatter};
+use defmt::{debug, trace, write, Format, Formatter};
 
 mod i2c;
 pub mod protocol;
@@ -7,7 +6,6 @@ pub mod requests;
 mod spi;
 
 use crate::driver::protocol::{Interface, Protocol};
-use crate::driver::requests::Command::SetSerialBaudRate;
 use crate::driver::requests::{CardType, Command, NTAGCommand, SAMMode};
 pub use i2c::I2c;
 pub use spi::Spi;
@@ -24,6 +22,26 @@ impl<E> Format for Error<E> {
             Self::Protocol(err) => write!(fmt, "Protocol error: {}", err),
             Self::InvalidResponse => write!(fmt, "Invalid response"),
             Self::Decoder => write!(fmt, "Decoder error"),
+        }
+    }
+}
+
+pub enum ReadError<E> {
+    Reader(Error<E>),
+    ReadError,
+}
+
+impl<E> From<Error<E>> for ReadError<E> {
+    fn from(value: Error<E>) -> Self {
+        Self::Reader(value)
+    }
+}
+
+impl<E> Format for ReadError<E> {
+    fn format(&self, fmt: Formatter) {
+        match self {
+            Self::Reader(err) => write!(fmt, "Protocol error: {}", err),
+            Self::ReadError => write!(fmt, "Read error"),
         }
     }
 }
@@ -59,8 +77,14 @@ where
             .await
     }
 
-    pub async fn read_ntag(&mut self, page: u8) -> Result<(), Error<I::Error>> {
-        self.request(Request::<0>::ntag_read(page).borrow()).await
+    pub async fn read_ntag(&mut self, page: u8) -> Result<[u8; 16], ReadError<I::Error>> {
+        self.request(Request::<0>::ntag_read(page).borrow())
+            .await
+            .map_err(ReadError::Reader)
+            .and_then(|d| match d {
+                DataReadResult::Err => Err(ReadError::ReadError),
+                DataReadResult::Ok(data) => Ok(data),
+            })
     }
 
     pub async fn read_passive_target(
@@ -100,6 +124,33 @@ pub struct FirmwareVersion {
     pub supports_iso14443_b: bool,
 }
 
+pub enum DataReadResult<const N: usize> {
+    Ok([u8; N]),
+    Err,
+}
+
+impl<const N: usize> Decode for DataReadResult<N> {
+    type Error = ();
+    const LEN: usize = N + 1;
+
+    fn decode(data: &[u8]) -> Result<Self, Self::Error> {
+        trace!("DRR: len {} - expected: {}", data.len(), Self::LEN);
+        trace!("DRR: data {:#X}", data);
+
+        if data.len() != Self::LEN {
+            return Err(());
+        }
+
+        if data[0] != 0x00 {
+            return Ok(Self::Err);
+        }
+
+        let mut result = [0u8; N];
+        result.copy_from_slice(&data[1..]);
+        Ok(Self::Ok(result))
+    }
+}
+
 pub trait Decode: Sized {
     type Error;
     const LEN: usize;
@@ -113,6 +164,21 @@ impl Decode for () {
 
     fn decode(_data: &[u8]) -> Result<Self, Self::Error> {
         Ok(())
+    }
+}
+
+impl<const N: usize> Decode for [u8; N] {
+    type Error = ();
+    const LEN: usize = N;
+
+    fn decode(data: &[u8]) -> Result<Self, Self::Error> {
+        if data.len() != Self::LEN {
+            return Err(());
+        }
+
+        let mut result = [0u8; N];
+        result.copy_from_slice(data);
+        Ok(result)
     }
 }
 
@@ -159,8 +225,13 @@ impl Decode for Option<CardUid> {
     }
 }
 
-#[derive(Format)]
 pub struct CardUid(pub [u8; 7]);
+
+impl Format for CardUid {
+    fn format(&self, fmt: Formatter) {
+        write!(fmt, "{:X}", self.0)
+    }
+}
 
 pub struct Request<const N: usize> {
     pub command: Command,
@@ -189,12 +260,13 @@ impl<const N: usize> Request<N> {
     pub const fn ntag_read(page: u8) -> Request<3> {
         Request::new(
             Command::InDataExchange,
-            [0x01, NTAGCommand::Read as u8, page],
+            [0x01 /* target (tg) */, NTAGCommand::Read as u8, page],
         )
     }
 
     pub const fn in_list_passive_target(card_type: CardType) -> Request<2> {
-        Request::new(Command::InListPassiveTarget, [0x01, card_type as u8])
+        const MAX_CARDS: u8 = 0x01;
+        Request::new(Command::InListPassiveTarget, [MAX_CARDS, card_type as u8])
     }
 
     pub(crate) fn borrow(&self) -> BorrowedRequest<'_> {

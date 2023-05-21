@@ -19,6 +19,8 @@ embassy-embedded-hal = { version = "0.1.0" }
 
 embedded-hal-async = { version = "0.2.0-alpha.1" }
 
+bytes = { version = "1", default-features = false }
+
 cortex-m-rt = "0.7"
 cortex-m = { version = "0.7", features = ["critical-section-single-core"] }
 
@@ -32,7 +34,7 @@ embassy-stm32 = { git = "https://github.com/embassy-rs/embassy.git", rev = "f4ad
 embassy-time = { git = "https://github.com/embassy-rs/embassy.git", rev = "f4ade6af8bb2571ce2de0531d9c9715a7b8b941c" }
 embassy-sync = { git = "https://github.com/embassy-rs/embassy.git", rev = "f4ade6af8bb2571ce2de0531d9c9715a7b8b941c" }
 
-pn532 = { path = "../pn532" }
+#pn532 = { path = "../pn532" }
 
 [profile.dev]
 codegen-units = 1
