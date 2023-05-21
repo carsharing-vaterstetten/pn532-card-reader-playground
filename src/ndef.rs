@@ -86,6 +86,7 @@ impl<'d> ReaderIter<'d> {
                     debug!("Message len: {}, start: 7", self.data[6]);
                     self.position = 7;
                 }
+                self.state = IterState::Reading;
             }
         };
 
