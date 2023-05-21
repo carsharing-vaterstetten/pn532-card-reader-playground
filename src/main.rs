@@ -4,8 +4,6 @@
 #![feature(async_fn_in_trait)]
 #![allow(incomplete_features)]
 
-// extern crate alloc;
-
 use crate::driver::protocol::Interface;
 use crate::driver::requests::{CardType, SAMMode};
 use crate::driver::Reader;
@@ -113,7 +111,8 @@ async fn main(_spawner: Spawner) {
         if let Ok(Some(card)) = result {
             info!("Card: {}", card);
 
-            match read_key(&mut reader).await {
+            let mut buf = [0u8; 1024];
+            match read_key(&mut buf, &mut reader).await {
                 Ok(key) => {
                     info!("Key: {}", key);
                 }
@@ -127,11 +126,11 @@ async fn main(_spawner: Spawner) {
     }
 }
 
-pub struct Key([u8; 8]);
+pub struct Key<'d>(&'d str);
 
-impl Format for Key {
+impl Format for Key<'_> {
     fn format(&self, fmt: Formatter) {
-        defmt::write!(fmt, "{:X}", self.0);
+        defmt::write!(fmt, "{}", self.0);
     }
 }
 
@@ -161,7 +160,10 @@ impl<I: Interface> From<ndef::Error> for ReadKeyError<I> {
     }
 }
 
-async fn read_key<I: Interface>(reader: &mut Reader<I>) -> Result<Option<Key>, ReadKeyError<I>> {
+async fn read_key<'d, const N: usize, I: Interface>(
+    buf: &'d mut [u8; N],
+    reader: &mut Reader<I>,
+) -> Result<Option<Key<'d>>, ReadKeyError<I>> {
     let read = reader.read_ntag(0).await?;
 
     trace!("Read 0: {:X}", read[0..4]);
@@ -177,8 +179,8 @@ async fn read_key<I: Interface>(reader: &mut Reader<I>) -> Result<Option<Key>, R
         max / (4 * 4)
     );
 
-    if max < 1024 {
-        let mut buf = [0u8; 1024];
+    if (max as usize) < N {
+        // let mut buf = [0u8; 1024];
 
         let max_p = max / 4;
         let mut p = 4u8; // start page
@@ -204,6 +206,13 @@ async fn read_key<I: Interface>(reader: &mut Reader<I>) -> Result<Option<Key>, R
         for record in ndef::Reader::new(&data) {
             let record = record?;
             info!("{:X}", record);
+            if let ndef::Record::MimeMedia {
+                r#type: "text/card",
+                value,
+            } = record
+            {
+                return Ok(Some(Key(value)));
+            }
         }
     }
 
