@@ -188,14 +188,6 @@ async fn read_key<I: Interface>(reader: &mut Reader<I>) -> Result<Option<Key>, R
             debug!("Read page starting: {}", p);
             let read = reader.read_ntag(p).await?;
 
-            /*
-            for j in 0..4 {
-                buf[i + j * 4 + 0] = read[j * 4 + 3];
-                buf[i + j * 4 + 1] = read[j * 4 + 2];
-                buf[i + j * 4 + 2] = read[j * 4 + 1];
-                buf[i + j * 4 + 3] = read[j * 4 + 0];
-            }
-             */
             buf[i..i + 16].copy_from_slice(&read);
 
             // advance index by 16 bytes
@@ -213,15 +205,6 @@ async fn read_key<I: Interface>(reader: &mut Reader<I>) -> Result<Option<Key>, R
             let record = record?;
             info!("{:X}", record);
         }
-
-        /*
-        for i in 1..max / 16 {
-            let read = reader.read_ntag(i as u8).await?;
-            info!("Read {}: {:X}", i * 4, read[0..4]);
-            info!("Read {}: {:X}", i * 4 + 1, read[4..8]);
-            info!("Read {}: {:X}", i * 4 + 2, read[8..12]);
-            info!("Read {}: {:X}", i * 4 + 3, read[12..16]);
-        }*/
     }
 
     Ok(None)
